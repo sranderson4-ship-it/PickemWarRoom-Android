@@ -7,3 +7,5 @@ Architecture: WebView client for the self-hosted War Room server
 
 This mobile package intentionally does not contain OpenAI or sports-odds API keys.
 Those remain on the War Room server.
+
+GitHub Actions builds an installable debug APK on every push to main.
