@@ -1,0 +1,9 @@
+Pick'em War Room Android v0.3.1-mobile1
+
+Package: com.pickemwarroom.mobile
+Min Android: 8.0 (API 26)
+Target Android: API 36
+Architecture: WebView client for the self-hosted War Room server
+
+This mobile package intentionally does not contain OpenAI or sports-odds API keys.
+Those remain on the War Room server.
