@@ -32,10 +32,10 @@ jobs:
         run: gradle :app:assembleRelease --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release-unsigned.apk BBBGolf-Android-v0.3.0-unsigned.apk
+        run: cp app/build/outputs/apk/release/app-release-unsigned.apk BBBGolf-Android-v0.3.1-unsigned.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BBBGolf-Android-v0.3.0-unsigned
-          path: BBBGolf-Android-v0.3.0-unsigned.apk
+          name: BBBGolf-Android-v0.3.1-unsigned
+          path: BBBGolf-Android-v0.3.1-unsigned.apk
