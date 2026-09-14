@@ -1,7 +1,6 @@
 package com.pickemwarroom.mobile;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -32,7 +31,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
     private static final String PREFS = "warroom_mobile";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.3.1-mobile1";
+    private static final String MOBILE_VERSION = "0.3.3-mobile3";
 
     private SharedPreferences prefs;
     private WebView webView;
@@ -68,15 +67,15 @@ public class MainActivity extends Activity {
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(14), dp(6), dp(8), dp(6));
+        toolbar.setPadding(dp(14), dp(4), dp(8), dp(4));
         toolbar.setBackgroundColor(Color.rgb(15, 23, 42));
 
         toolbarTitle = new TextView(this);
         toolbarTitle.setText("Pick'em War Room");
         toolbarTitle.setTextColor(Color.WHITE);
-        toolbarTitle.setTextSize(18);
+        toolbarTitle.setTextSize(17);
         toolbarTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, dp(44), 1f);
         toolbarTitle.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(toolbarTitle, titleParams);
 
@@ -85,14 +84,14 @@ public class MainActivity extends Activity {
         reload.setOnClickListener(v -> {
             if (webView.getVisibility() == View.VISIBLE) webView.reload();
         });
-        toolbar.addView(reload, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        toolbar.addView(reload, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         Button settings = toolbarButton("⚙");
         settings.setContentDescription("Server settings");
         settings.setOnClickListener(v -> showSetup("Change the server address, then reconnect."));
-        toolbar.addView(settings, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        toolbar.addView(settings, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
-        root.addView(toolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
+        root.addView(toolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
 
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
@@ -109,20 +108,20 @@ public class MainActivity extends Activity {
         setupPanel = new LinearLayout(this);
         setupPanel.setOrientation(LinearLayout.VERTICAL);
         setupPanel.setGravity(Gravity.CENTER_HORIZONTAL);
-        setupPanel.setPadding(dp(24), dp(34), dp(24), dp(24));
+        setupPanel.setPadding(dp(24), dp(28), dp(24), dp(24));
         setupPanel.setBackgroundColor(Color.rgb(11, 18, 32));
 
         TextView heading = new TextView(this);
         heading.setText("Connect to War Room");
         heading.setTextColor(Color.WHITE);
-        heading.setTextSize(28);
+        heading.setTextSize(26);
         heading.setTypeface(null, android.graphics.Typeface.BOLD);
         setupPanel.addView(heading, matchWrap(dp(8)));
 
         TextView help = new TextView(this);
         help.setText("Use your Tailscale Serve URL for access anywhere, or your server's LAN URL while at home.\n\nExamples:\nhttps://warroom.example.ts.net\nhttp://192.168.1.25:8765");
         help.setTextColor(Color.rgb(148, 163, 184));
-        help.setTextSize(16);
+        help.setTextSize(15);
         help.setLineSpacing(0, 1.15f);
         setupPanel.addView(help, matchWrap(dp(22)));
 
@@ -189,11 +188,13 @@ public class MainActivity extends Activity {
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setLoadWithOverviewMode(false);
         s.setUseWideViewPort(true);
+        s.setTextZoom(100);
         s.setSupportZoom(true);
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         s.setUserAgentString(s.getUserAgentString() + " PickemWarRoomAndroid/" + MOBILE_VERSION);
+        webView.setInitialScale(100);
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -220,6 +221,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (url != null && !"about:blank".equals(url)) {
+                    view.evaluateJavascript("(function(){var m=document.querySelector('meta[name=viewport]');if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}m.content='width=device-width,initial-scale=1,viewport-fit=cover';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';})();", null);
                     setupPanel.setVisibility(View.GONE);
                     webView.setVisibility(View.VISIBLE);
                     toolbarTitle.setText("Pick'em War Room");
