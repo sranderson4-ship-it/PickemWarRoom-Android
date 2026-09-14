@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="warroom_bg">#0B1220</color>
-    <color name="warroom_panel">#111827</color>
-    <color name="warroom_text">#F8FAFC</color>
-    <color name="warroom_muted">#94A3B8</color>
-    <color name="warroom_accent">#22C55E</color>
+    <color name="warroom_bg">#0D0F0E</color>
+    <color name="warroom_panel">#1C1E1D</color>
+    <color name="warroom_text">#F8FAF9</color>
+    <color name="warroom_muted">#A9AEAC</color>
+    <color name="warroom_accent">#006747</color>
 </resources>
