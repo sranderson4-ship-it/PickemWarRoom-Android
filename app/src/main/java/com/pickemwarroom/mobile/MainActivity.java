@@ -39,7 +39,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     private static final String PREFS = "bbb_golf_mobile";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.2.1";
+    private static final String MOBILE_VERSION = "0.2.2";
     private static final int FILE_CHOOSER_REQUEST = 5102;
 
     private SharedPreferences prefs;
@@ -197,7 +197,7 @@ public class MainActivity extends Activity {
         panel.addView(connectionMessage, matchWrap(dp(4)));
 
         TextView version = new TextView(this);
-        version.setText("Android wrapper v" + MOBILE_VERSION + "\nPress Android Back from the app home screen to change the server address.");
+        version.setText("Android wrapper v" + MOBILE_VERSION + "\nAndroid Back navigates inside BBB Golf and never exits the app.");
         version.setTextColor(Color.rgb(112, 119, 116));
         version.setTextSize(11);
         version.setGravity(Gravity.CENTER);
@@ -407,16 +407,28 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (setupView.getVisibility() == View.VISIBLE && serverUrl != null && !serverUrl.isEmpty()) {
-            setupView.setVisibility(View.GONE);
-            webView.setVisibility(View.VISIBLE);
-        } else if (webView.canGoBack()) {
-            webView.goBack();
-        } else if (webView.getVisibility() == View.VISIBLE) {
-            showSetup("Change the server address, or press Back again to exit.");
-        } else {
-            super.onBackPressed();
+        // Back is always consumed by BBB Golf. It may navigate WebView history,
+        // but it never finishes the Android Activity.
+        if (setupView.getVisibility() == View.VISIBLE) {
+            if (serverUrl != null && !serverUrl.isEmpty()) {
+                setupView.setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
+            } else {
+                Toast.makeText(this, "Connect to the BBB Golf server to continue.", Toast.LENGTH_SHORT).show();
+            }
+            return;
         }
+
+        if (webView.getVisibility() == View.VISIBLE) {
+            if (webView.canGoBack()) {
+                webView.goBack();
+            } else {
+                Toast.makeText(this, "You're already at the start of BBB Golf.", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        // Intentionally do nothing instead of calling super.onBackPressed().
     }
 
     @Override
