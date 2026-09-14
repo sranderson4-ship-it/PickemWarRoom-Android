@@ -6,19 +6,15 @@ import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.Insets;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.net.http.SslError;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
@@ -43,7 +39,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     private static final String PREFS = "bbb_golf_mobile";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.2.0";
+    private static final String MOBILE_VERSION = "0.2.1";
     private static final int FILE_CHOOSER_REQUEST = 5102;
 
     private SharedPreferences prefs;
@@ -59,10 +55,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        configureSystemBars();
+        configureWindow();
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         buildUi();
-        applySystemInsets();
         configureWebView();
 
         serverUrl = prefs.getString(KEY_SERVER_URL, "");
@@ -74,64 +69,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void configureSystemBars() {
+    private void configureWindow() {
         Window window = getWindow();
         int bg = Color.rgb(13, 15, 14);
         window.setStatusBarColor(bg);
         window.setNavigationBarColor(bg);
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.setNavigationBarContrastEnforced(false);
-            window.setStatusBarContrastEnforced(false);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsetsController controller = window.getInsetsController();
-            if (controller != null) {
-                controller.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                controller.setSystemBarsAppearance(
-                        0,
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
-                                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                );
-            }
-        } else {
-            window.getDecorView().setSystemUiVisibility(0);
-        }
-    }
-
-    private void applySystemInsets() {
-        root.setOnApplyWindowInsetsListener((v, insets) -> {
-            int left;
-            int top;
-            int right;
-            int bottom;
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Insets bars = insets.getInsets(
-                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
-                );
-                left = bars.left;
-                top = bars.top;
-                right = bars.right;
-                bottom = bars.bottom;
-            } else {
-                left = insets.getSystemWindowInsetLeft();
-                top = insets.getSystemWindowInsetTop();
-                right = insets.getSystemWindowInsetRight();
-                bottom = insets.getSystemWindowInsetBottom();
-            }
-
-            // The web app is laid out only inside the usable Android window.
-            // This keeps its fixed header/footer clear of status/navigation bars.
-            v.setPadding(left, top, right, bottom);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                return WindowInsets.CONSUMED;
-            }
-            return insets.consumeSystemWindowInsets();
-        });
-        root.requestApplyInsets();
+        window.getDecorView().setSystemUiVisibility(0);
     }
 
     private void buildUi() {
@@ -140,6 +84,7 @@ public class MainActivity extends Activity {
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(13, 15, 14));
+        webView.setVisibility(View.GONE);
         root.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -210,7 +155,7 @@ public class MainActivity extends Activity {
         ));
 
         Button connect = new Button(this);
-        connect.setText("CONNECT TO BBB GOLF");
+        connect.setText("Connect to BBB Golf");
         connect.setTextColor(Color.WHITE);
         connect.setTextSize(15);
         connect.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -291,13 +236,11 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean onShowFileChooser(
-                    WebView webView,
+                    WebView view,
                     ValueCallback<Uri[]> filePathCallback,
                     FileChooserParams fileChooserParams
             ) {
-                if (fileChooserCallback != null) {
-                    fileChooserCallback.onReceiveValue(null);
-                }
+                if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
                 fileChooserCallback = filePathCallback;
 
                 Intent intent;
@@ -325,9 +268,7 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri target = request.getUrl();
                 Uri base = safeUri(serverUrl);
-                if (base != null && target != null && sameHost(base, target)) {
-                    return false;
-                }
+                if (base != null && target != null && sameHost(base, target)) return false;
                 if (target != null && ("http".equals(target.getScheme()) || "https".equals(target.getScheme()))) {
                     openExternal(target);
                     return true;
@@ -349,10 +290,7 @@ public class MainActivity extends Activity {
                 super.onReceivedError(view, request, error);
                 if (request.isForMainFrame()) {
                     String description = error == null ? "Connection failed" : String.valueOf(error.getDescription());
-                    showSetup(
-                            "Couldn't reach the BBB Golf server: " + description +
-                                    "\n\nMake sure the Windows server is running and the Tailscale/LAN address is correct."
-                    );
+                    showSetup("Couldn't reach BBB Golf: " + description + "\n\nCheck that the server is running and that the Tailscale/LAN address is correct.");
                 }
             }
 
@@ -370,7 +308,6 @@ public class MainActivity extends Activity {
             connectionMessage.setText("Enter a valid server address.");
             return;
         }
-
         serverUrl = normalized;
         serverUrlInput.setText(normalized);
         prefs.edit().putString(KEY_SERVER_URL, normalized).apply();
@@ -383,44 +320,26 @@ public class MainActivity extends Activity {
     private void showSetup(String message) {
         setupView.setVisibility(View.VISIBLE);
         webView.setVisibility(View.GONE);
-        if (connectionMessage != null) {
-            connectionMessage.setText(message == null ? "" : message);
-        }
-        if (serverUrlInput != null && serverUrl != null && !serverUrl.isEmpty()) {
-            serverUrlInput.setText(serverUrl);
-        }
+        if (connectionMessage != null) connectionMessage.setText(message == null ? "" : message);
+        if (serverUrlInput != null && serverUrl != null && !serverUrl.isEmpty()) serverUrlInput.setText(serverUrl);
     }
 
     private String normalizeUrl(String raw) {
         if (raw == null) return null;
         String v = raw.trim();
         if (v.isEmpty()) return null;
-
         if (!v.startsWith("http://") && !v.startsWith("https://")) {
-            String lower = v.toLowerCase();
-            if (lower.contains(".ts.net")) {
-                v = "https://" + v;
-            } else {
-                v = "http://" + v;
-            }
+            v = v.toLowerCase().contains(".ts.net") ? "https://" + v : "http://" + v;
         }
-
         Uri uri = safeUri(v);
-        if (uri == null || uri.getHost() == null || uri.getHost().trim().isEmpty()) {
-            return null;
-        }
-        while (v.endsWith("/")) {
-            v = v.substring(0, v.length() - 1);
-        }
+        if (uri == null || uri.getHost() == null || uri.getHost().trim().isEmpty()) return null;
+        while (v.endsWith("/")) v = v.substring(0, v.length() - 1);
         return v;
     }
 
     private Uri safeUri(String value) {
-        try {
-            return value == null || value.isEmpty() ? null : Uri.parse(value);
-        } catch (Exception e) {
-            return null;
-        }
+        try { return value == null || value.isEmpty() ? null : Uri.parse(value); }
+        catch (Exception e) { return null; }
     }
 
     private boolean sameHost(Uri a, Uri b) {
@@ -435,11 +354,8 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri) {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, uri));
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "No app can open this link.", Toast.LENGTH_SHORT).show();
-        }
+        try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
+        catch (ActivityNotFoundException e) { Toast.makeText(this, "No app can open this link.", Toast.LENGTH_SHORT).show(); }
     }
 
     @Override
@@ -461,47 +377,45 @@ public class MainActivity extends Activity {
                     uris.add(data.getData());
                 }
             }
-            if (!uris.isEmpty()) {
-                result = uris.toArray(new Uri[0]);
-            }
+            if (!uris.isEmpty()) result = uris.toArray(new Uri[0]);
         }
-
         fileChooserCallback.onReceiveValue(result);
         fileChooserCallback = null;
     }
 
     private GradientDrawable rounded(int fill, int stroke, int radiusDp) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(fill);
-        drawable.setCornerRadius(dp(radiusDp));
-        if (stroke != Color.TRANSPARENT) {
-            drawable.setStroke(dp(1), stroke);
-        }
-        return drawable;
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(radiusDp));
+        if (stroke != Color.TRANSPARENT) g.setStroke(dp(1), stroke);
+        return g;
     }
 
     private LinearLayout.LayoutParams matchWrap(int bottomMargin) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        params.bottomMargin = bottomMargin;
-        return params;
+        p.bottomMargin = bottomMargin;
+        return p;
     }
 
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (setupView.getVisibility() == View.VISIBLE) {
-            super.onBackPressed();
+        if (setupView.getVisibility() == View.VISIBLE && serverUrl != null && !serverUrl.isEmpty()) {
+            setupView.setVisibility(View.GONE);
+            webView.setVisibility(View.VISIBLE);
         } else if (webView.canGoBack()) {
             webView.goBack();
+        } else if (webView.getVisibility() == View.VISIBLE) {
+            showSetup("Change the server address, or press Back again to exit.");
         } else {
-            showSetup("Change the server address and reconnect, or press Back again to close BBB Golf.");
+            super.onBackPressed();
         }
     }
 
