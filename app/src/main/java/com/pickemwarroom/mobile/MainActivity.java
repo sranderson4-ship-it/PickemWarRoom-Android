@@ -9,7 +9,6 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -18,7 +17,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
-import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,7 +31,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -51,21 +48,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
-    private static final String PREFS = "bbb_golf_mobile";
-    private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.3.0";
-    private static final int MOBILE_VERSION_CODE = 4;
+    private static final String SERVER_URL = "https://larkwebapp.taild46ae8.ts.net:8443";
+    private static final String MOBILE_VERSION = "0.3.1";
+    private static final int MOBILE_VERSION_CODE = 5;
     private static final int FILE_CHOOSER_REQUEST = 5102;
     private static final int UNKNOWN_SOURCES_REQUEST = 5103;
 
-    private SharedPreferences prefs;
     private FrameLayout root;
     private WebView webView;
     private ScrollView setupView;
-    private EditText serverUrlInput;
     private TextView connectionMessage;
     private ProgressBar progressBar;
-    private String serverUrl = "";
     private ValueCallback<Uri[]> fileChooserCallback;
     private long updateDownloadId = -1;
     private Uri pendingInstallUri;
@@ -78,6 +71,7 @@ public class MainActivity extends Activity {
             if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
             long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
             if (id != updateDownloadId) return;
+
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             Uri uri = dm.getUriForDownloadedFile(id);
             if (uri == null) {
@@ -93,18 +87,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         configureWindow();
-        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         buildUi();
         configureWebView();
         registerDownloadReceiver();
-
-        serverUrl = prefs.getString(KEY_SERVER_URL, "");
-        if (serverUrl == null || serverUrl.trim().isEmpty()) {
-            showSetup("Enter the address of the computer running BBB Golf.");
-        } else {
-            serverUrlInput.setText(serverUrl);
-            connectToServer(serverUrl);
-        }
+        connectToPrivateServer();
     }
 
     private void configureWindow() {
@@ -154,7 +140,7 @@ public class MainActivity extends Activity {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setGravity(Gravity.CENTER_HORIZONTAL);
-        panel.setPadding(dp(24), dp(34), dp(24), dp(28));
+        panel.setPadding(dp(24), dp(44), dp(24), dp(28));
         setupView.addView(panel, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -169,50 +155,32 @@ public class MainActivity extends Activity {
         panel.addView(heading, matchWrap(dp(6)));
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Bingo Bango Bongo Golf");
+        subtitle.setText("Private Tailscale App");
         subtitle.setTextColor(Color.rgb(0, 184, 137));
-        subtitle.setTextSize(16);
+        subtitle.setTextSize(15);
         subtitle.setGravity(Gravity.CENTER);
-        panel.addView(subtitle, matchWrap(dp(26)));
+        panel.addView(subtitle, matchWrap(dp(24)));
 
-        TextView help = new TextView(this);
-        help.setText(
-                "Connect this app to the Windows computer running BBB Golf.\n\n" +
-                "Tailscale Serve example:\n" +
-                "https://your-machine.tailnet-name.ts.net:8443\n\n" +
-                "LAN / Tailscale IP example:\n" +
-                "http://192.168.1.25:8788"
-        );
-        help.setTextColor(Color.rgb(169, 174, 172));
-        help.setTextSize(15);
-        help.setLineSpacing(0, 1.18f);
-        panel.addView(help, matchWrap(dp(18)));
+        connectionMessage = new TextView(this);
+        connectionMessage.setTextColor(Color.rgb(180, 185, 182));
+        connectionMessage.setTextSize(14);
+        connectionMessage.setGravity(Gravity.CENTER);
+        connectionMessage.setLineSpacing(0, 1.15f);
+        connectionMessage.setText("Connecting to your private BBB Golf server…");
+        panel.addView(connectionMessage, matchWrap(dp(20)));
 
-        serverUrlInput = new EditText(this);
-        serverUrlInput.setSingleLine(true);
-        serverUrlInput.setHint("https://server-address:port");
-        serverUrlInput.setTextColor(Color.WHITE);
-        serverUrlInput.setHintTextColor(Color.rgb(112, 119, 116));
-        serverUrlInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        serverUrlInput.setPadding(dp(14), 0, dp(14), 0);
-        serverUrlInput.setBackground(rounded(Color.rgb(35, 38, 36), Color.rgb(58, 62, 59), 12));
-        panel.addView(serverUrlInput, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)
-        ));
-
-        Button connect = new Button(this);
-        connect.setText("Connect to BBB Golf");
-        connect.setTextColor(Color.WHITE);
-        connect.setTextSize(15);
-        connect.setTypeface(null, android.graphics.Typeface.BOLD);
-        connect.setAllCaps(false);
-        connect.setBackground(rounded(Color.rgb(0, 103, 71), Color.TRANSPARENT, 12));
-        LinearLayout.LayoutParams connectParams = new LinearLayout.LayoutParams(
+        Button retry = new Button(this);
+        retry.setText("Retry connection");
+        retry.setTextColor(Color.WHITE);
+        retry.setTextSize(15);
+        retry.setTypeface(null, android.graphics.Typeface.BOLD);
+        retry.setAllCaps(false);
+        retry.setBackground(rounded(Color.rgb(0, 103, 71), Color.TRANSPARENT, 12));
+        LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(56)
         );
-        connectParams.topMargin = dp(14);
-        panel.addView(connect, connectParams);
-        connect.setOnClickListener(v -> connectToServer(serverUrlInput.getText().toString()));
+        panel.addView(retry, retryParams);
+        retry.setOnClickListener(v -> connectToPrivateServer());
 
         Button checkUpdate = new Button(this);
         checkUpdate.setText("Check for app update");
@@ -225,44 +193,18 @@ public class MainActivity extends Activity {
         );
         updateParams.topMargin = dp(10);
         panel.addView(checkUpdate, updateParams);
-        checkUpdate.setOnClickListener(v -> {
-            String candidate = normalizeUrl(serverUrlInput.getText().toString());
-            if (candidate == null) {
-                connectionMessage.setText("Enter the server address first.");
-                return;
-            }
-            serverUrl = candidate;
-            checkForUpdate(true);
-        });
+        checkUpdate.setOnClickListener(v -> checkForUpdate(true));
 
-        Button clear = new Button(this);
-        clear.setText("Clear saved server");
-        clear.setTextColor(Color.rgb(200, 205, 202));
-        clear.setTextSize(13);
-        clear.setAllCaps(false);
-        clear.setBackgroundColor(Color.TRANSPARENT);
-        LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)
-        );
-        clearParams.topMargin = dp(4);
-        panel.addView(clear, clearParams);
-        clear.setOnClickListener(v -> {
-            prefs.edit().remove(KEY_SERVER_URL).apply();
-            serverUrl = "";
-            serverUrlInput.setText("");
-            webView.loadUrl("about:blank");
-            connectionMessage.setText("Saved server cleared.");
-        });
-
-        connectionMessage = new TextView(this);
-        connectionMessage.setTextColor(Color.rgb(169, 174, 172));
-        connectionMessage.setTextSize(13);
-        connectionMessage.setGravity(Gravity.CENTER);
-        connectionMessage.setPadding(0, dp(10), 0, dp(10));
-        panel.addView(connectionMessage, matchWrap(dp(4)));
+        TextView serverInfo = new TextView(this);
+        serverInfo.setText("Server is built into this app.\n" + SERVER_URL + "\n\nMake sure Tailscale is connected on this phone.");
+        serverInfo.setTextColor(Color.rgb(112, 119, 116));
+        serverInfo.setTextSize(11);
+        serverInfo.setGravity(Gravity.CENTER);
+        serverInfo.setPadding(0, dp(20), 0, dp(8));
+        panel.addView(serverInfo, matchWrap(dp(4)));
 
         TextView version = new TextView(this);
-        version.setText("Android app v" + MOBILE_VERSION + "\nUpdates are checked from your BBB Golf server.");
+        version.setText("Android app v" + MOBILE_VERSION + "\nUpdates are checked from the BBB Golf server.");
         version.setTextColor(Color.rgb(112, 119, 116));
         version.setTextSize(11);
         version.setGravity(Gravity.CENTER);
@@ -330,8 +272,8 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri target = request.getUrl();
-                Uri base = safeUri(serverUrl);
-                if (base != null && target != null && sameHost(base, target)) return false;
+                Uri base = Uri.parse(SERVER_URL);
+                if (target != null && sameHost(base, target)) return false;
                 if (target != null && ("http".equals(target.getScheme()) || "https".equals(target.getScheme()))) {
                     openExternal(target);
                     return true;
@@ -357,47 +299,44 @@ public class MainActivity extends Activity {
                 super.onReceivedError(view, request, error);
                 if (request.isForMainFrame()) {
                     String description = error == null ? "Connection failed" : String.valueOf(error.getDescription());
-                    showSetup("Couldn't reach BBB Golf: " + description + "\n\nCheck that the server is running and that the Tailscale/LAN address is correct.");
+                    showConnectionScreen("Couldn't reach the private BBB Golf server: " + description + "\n\nMake sure Tailscale is connected and the Windows BBB Golf server is running.");
                 }
             }
 
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 handler.cancel();
-                showSetup("HTTPS certificate check failed. Use a valid Tailscale HTTPS address or an HTTP LAN/Tailscale IP address.");
+                showConnectionScreen("Secure connection failed. Make sure Tailscale is connected, then tap Retry connection.");
             }
         });
     }
 
-    private void connectToServer(String raw) {
-        String normalized = normalizeUrl(raw);
-        if (normalized == null) {
-            connectionMessage.setText("Enter a valid server address.");
-            return;
-        }
-        serverUrl = normalized;
-        serverUrlInput.setText(normalized);
-        prefs.edit().putString(KEY_SERVER_URL, normalized).apply();
-        connectionMessage.setText("Connecting to " + normalized + " …");
+    private void connectToPrivateServer() {
+        connectionMessage.setText("Connecting to your private BBB Golf server…");
         setupView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
-        webView.loadUrl(normalized);
+        webView.loadUrl(SERVER_URL);
+    }
+
+    private void showConnectionScreen(String message) {
+        setupView.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.GONE);
+        connectionMessage.setText(message == null ? "" : message);
     }
 
     private void checkForUpdate(boolean userRequested) {
-        final String base = serverUrl;
-        if (base == null || base.isEmpty()) return;
-        if (userRequested) runOnUiThread(() -> connectionMessage.setText("Checking for app update…"));
+        if (userRequested) connectionMessage.setText("Checking for app update…");
 
         new Thread(() -> {
             HttpURLConnection connection = null;
             try {
-                URL url = new URL(base + "/api/mobile-update?versionCode=" + MOBILE_VERSION_CODE);
+                URL url = new URL(SERVER_URL + "/api/mobile-update?versionCode=" + MOBILE_VERSION_CODE);
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setConnectTimeout(8000);
                 connection.setReadTimeout(8000);
                 connection.setRequestProperty("Accept", "application/json");
-                if (connection.getResponseCode() != 200) throw new Exception("HTTP " + connection.getResponseCode());
+                int response = connection.getResponseCode();
+                if (response != 200) throw new Exception("HTTP " + response);
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 StringBuilder body = new StringBuilder();
@@ -420,7 +359,7 @@ public class MainActivity extends Activity {
                 });
             } catch (Exception e) {
                 if (userRequested) {
-                    runOnUiThread(() -> connectionMessage.setText("Could not check for updates: " + e.getMessage()));
+                    runOnUiThread(() -> connectionMessage.setText("Could not check for updates. Make sure Tailscale and the BBB Golf server are running."));
                 }
             } finally {
                 if (connection != null) connection.disconnect();
@@ -429,16 +368,16 @@ public class MainActivity extends Activity {
     }
 
     private String resolveServerUrl(String path) {
-        if (path == null || path.isEmpty()) return serverUrl + "/downloads/BBBGolf-Android.apk";
+        if (path == null || path.isEmpty()) return SERVER_URL + "/downloads/BBBGolf-Android.apk";
         if (path.startsWith("http://") || path.startsWith("https://")) return path;
         if (!path.startsWith("/")) path = "/" + path;
-        return serverUrl + path;
+        return SERVER_URL + path;
     }
 
     private void showUpdateDialog(String versionName, String notes, String apkUrl) {
         new AlertDialog.Builder(this)
                 .setTitle("BBB Golf update available" + (versionName.isEmpty() ? "" : " — v" + versionName))
-                .setMessage(notes + "\n\nThe update will download from your BBB Golf server, then Android will ask you to approve installation.")
+                .setMessage(notes + "\n\nThe update will download privately from your BBB Golf server. Android will then ask you to approve installation.")
                 .setNegativeButton("Later", null)
                 .setPositiveButton("Update", (dialog, which) -> downloadUpdate(apkUrl, versionName))
                 .show();
@@ -462,6 +401,7 @@ public class MainActivity extends Activity {
 
     private void beginInstall(Uri apkUri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+            pendingInstallUri = apkUri;
             try {
                 Intent permissionIntent = new Intent(
                         Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -490,33 +430,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void showSetup(String message) {
-        setupView.setVisibility(View.VISIBLE);
-        webView.setVisibility(View.GONE);
-        if (connectionMessage != null) connectionMessage.setText(message == null ? "" : message);
-        if (serverUrlInput != null && serverUrl != null && !serverUrl.isEmpty()) serverUrlInput.setText(serverUrl);
-    }
-
-    private String normalizeUrl(String raw) {
-        if (raw == null) return null;
-        String v = raw.trim();
-        if (v.isEmpty()) return null;
-        if (!v.startsWith("http://") && !v.startsWith("https://")) {
-            v = v.toLowerCase().contains(".ts.net") ? "https://" + v : "http://" + v;
-        }
-        Uri uri = safeUri(v);
-        if (uri == null || uri.getHost() == null || uri.getHost().trim().isEmpty()) return null;
-        while (v.endsWith("/")) v = v.substring(0, v.length() - 1);
-        return v;
-    }
-
-    private Uri safeUri(String value) {
-        try { return value == null || value.isEmpty() ? null : Uri.parse(value); }
-        catch (Exception e) { return null; }
-    }
-
     private boolean sameHost(Uri a, Uri b) {
-        if (a.getHost() == null || b.getHost() == null) return false;
+        if (a == null || b == null || a.getHost() == null || b.getHost() == null) return false;
         int ap = a.getPort() == -1 ? defaultPort(a.getScheme()) : a.getPort();
         int bp = b.getPort() == -1 ? defaultPort(b.getScheme()) : b.getPort();
         return a.getHost().equalsIgnoreCase(b.getHost()) && ap == bp;
@@ -527,13 +442,17 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri) {
-        try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
-        catch (ActivityNotFoundException e) { Toast.makeText(this, "No app can open this link.", Toast.LENGTH_SHORT).show(); }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No app can open this link.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == UNKNOWN_SOURCES_REQUEST) {
             if (pendingInstallUri != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls())) {
                 Uri uri = pendingInstallUri;
@@ -542,6 +461,7 @@ public class MainActivity extends Activity {
             }
             return;
         }
+
         if (requestCode != FILE_CHOOSER_REQUEST || fileChooserCallback == null) return;
 
         Uri[] result = null;
@@ -560,6 +480,7 @@ public class MainActivity extends Activity {
             }
             if (!uris.isEmpty()) result = uris.toArray(new Uri[0]);
         }
+
         fileChooserCallback.onReceiveValue(result);
         fileChooserCallback = null;
     }
@@ -589,25 +510,25 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (setupView.getVisibility() == View.VISIBLE) {
-            if (serverUrl != null && !serverUrl.isEmpty()) {
-                setupView.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-            }
+            connectToPrivateServer();
             return;
         }
         if (webView.getVisibility() == View.VISIBLE && webView.canGoBack()) {
             webView.goBack();
             return;
         }
-        if (webView.getVisibility() == View.VISIBLE && serverUrl != null && !serverUrl.isEmpty()) {
-            webView.loadUrl(serverUrl);
+        if (webView.getVisibility() == View.VISIBLE) {
+            webView.loadUrl(SERVER_URL);
         }
     }
 
     @Override
     protected void onDestroy() {
         if (receiverRegistered) {
-            try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) {}
+            try {
+                unregisterReceiver(downloadReceiver);
+            } catch (Exception ignored) {
+            }
             receiverRegistered = false;
         }
         if (fileChooserCallback != null) {
