@@ -31,7 +31,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
     private static final String PREFS = "warroom_mobile";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.3.6-mobile4";
+    private static final String MOBILE_VERSION = "0.4.2-mobile5";
 
     private SharedPreferences prefs;
     private WebView webView;
@@ -334,7 +334,7 @@ public class MainActivity extends Activity {
         } else if (webView.canGoBack()) {
             webView.goBack();
         } else {
-            super.onBackPressed();
+            Toast.makeText(this, "Pick'em War Room stays open. Use Home to leave the app.", Toast.LENGTH_SHORT).show();
         }
     }
 
