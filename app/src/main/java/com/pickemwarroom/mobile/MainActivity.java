@@ -31,7 +31,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
     private static final String PREFS = "warroom_mobile";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.3.3-mobile3";
+    private static final String MOBILE_VERSION = "0.3.6-mobile4";
 
     private SharedPreferences prefs;
     private WebView webView;
