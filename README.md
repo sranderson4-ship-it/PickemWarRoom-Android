@@ -1,10 +1,14 @@
-# Pick'em War Room Android — v0.3.1-mobile1
+# Pick'em War Room Android — v0.3.6-mobile4
 
-This is the Android companion for Pick'em War Room v0.3.1.
+This is the Android companion for Pick'em War Room.
+
+## Branding
+
+The Android launcher now uses the supplied Pick'em War Room shield artwork, matching the Windows desktop launcher icon.
 
 ## Important architecture
 
-The APK is a mobile client for the existing Pick'em War Room server. It does **not** run the Go backend or duplicate your data on the phone. Your Windows/server instance remains the single source of truth for picks, AI research, odds keys, notifications, results, and bet tracking.
+The APK is a mobile client for the existing Pick'em War Room server. It does **not** run the Go backend or duplicate your data on the phone. Your Windows/server instance remains the single source of truth for picks, AI research, odds keys, notifications, results, bet tracking, and season history.
 
 That is intentional: you can make a pick on your phone and immediately see the same change on your desktop.
 
@@ -24,11 +28,10 @@ https://your-pc.your-tailnet.ts.net
 
 Install Tailscale on the Android phone, sign into the same tailnet, then paste that HTTPS URL into the Android app on first launch.
 
-You can also use a LAN URL such as `http://192.168.1.25:8765` if the server is configured to listen on the LAN. The current Windows War Room build listens on localhost by default, so Tailscale Serve is the safer/easier route.
-
 ## Phone behavior
 
 - Saves the War Room server URL on the device.
+- Uses the responsive mobile web layout served by the current War Room server.
 - JavaScript and DOM storage are enabled for the War Room UI.
 - Same-server links remain inside the app.
 - External AI/source links open in the phone's browser.
@@ -40,23 +43,4 @@ You can also use a LAN URL such as `http://192.168.1.25:8765` if the server is c
 
 The repository contains `.github/workflows/build-apk.yml`.
 
-1. Open the repository's **Actions** tab.
-2. Run **Build Pick'em War Room APK**, or push a change to `main`.
-3. Download the artifact named `PickemWarRoom-Android-v0.3.1-mobile1`.
-4. Extract and sideload the APK onto Android.
-
-The workflow builds a debug-signed APK, which is suitable for private testing/sideloading. A future production release should use a persistent private signing key.
-
-## Build locally
-
-Open the folder in Android Studio and build the `app` module, or install Android SDK 36 + Gradle 8.11.1 and run:
-
-```bash
-gradle :app:assembleDebug
-```
-
-Output:
-
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
+The workflow builds a debug-signed APK suitable for private testing/sideloading. A future production release should use a persistent private signing key.
