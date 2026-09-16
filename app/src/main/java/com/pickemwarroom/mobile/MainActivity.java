@@ -13,6 +13,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -31,12 +32,14 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
     private static final String PREFS = "warroom_mobile";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String MOBILE_VERSION = "0.4.2-mobile5";
+    private static final String MOBILE_VERSION = "0.4.5-mobile6";
+    private static final String DEFAULT_SERVER_URL = "http://pickem-war-room";
 
     private SharedPreferences prefs;
     private WebView webView;
     private FrameLayout contentFrame;
     private LinearLayout setupPanel;
+    private LinearLayout toolbar;
     private EditText serverUrlInput;
     private TextView connectionMessage;
     private ProgressBar progressBar;
@@ -46,17 +49,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Window window = getWindow();
+        window.setStatusBarColor(Color.rgb(15, 23, 42));
+        window.setNavigationBarColor(Color.rgb(8, 12, 18));
+
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         buildUi();
         configureWebView();
 
-        serverUrl = prefs.getString(KEY_SERVER_URL, "");
-        if (serverUrl == null || serverUrl.trim().isEmpty()) {
-            showSetup("Enter the address of the computer/server running Pick'em War Room.");
-        } else {
-            serverUrlInput.setText(serverUrl);
-            connectToServer(serverUrl);
-        }
+        String saved = prefs.getString(KEY_SERVER_URL, "");
+        serverUrl = saved == null || saved.trim().isEmpty() ? DEFAULT_SERVER_URL : saved.trim();
+        serverUrlInput.setText(serverUrl);
+        connectToServer(serverUrl);
     }
 
     private void buildUi() {
@@ -64,14 +68,14 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(11, 18, 32));
 
-        LinearLayout toolbar = new LinearLayout(this);
+        toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(dp(14), dp(4), dp(8), dp(4));
         toolbar.setBackgroundColor(Color.rgb(15, 23, 42));
 
         toolbarTitle = new TextView(this);
-        toolbarTitle.setText("Pick'em War Room");
+        toolbarTitle.setText("War Room Connection");
         toolbarTitle.setTextColor(Color.WHITE);
         toolbarTitle.setTextSize(17);
         toolbarTitle.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -119,7 +123,7 @@ public class MainActivity extends Activity {
         setupPanel.addView(heading, matchWrap(dp(8)));
 
         TextView help = new TextView(this);
-        help.setText("Use your Tailscale Serve URL for access anywhere, or your server's LAN URL while at home.\n\nExamples:\nhttps://warroom.example.ts.net\nhttp://192.168.1.25:8765");
+        help.setText("This build is preconfigured for your War Room server at:\n" + DEFAULT_SERVER_URL + "\n\nIf the automatic connection fails, you can enter a different Tailscale Serve or LAN address below.");
         help.setTextColor(Color.rgb(148, 163, 184));
         help.setTextSize(15);
         help.setLineSpacing(0, 1.15f);
@@ -127,7 +131,7 @@ public class MainActivity extends Activity {
 
         serverUrlInput = new EditText(this);
         serverUrlInput.setSingleLine(true);
-        serverUrlInput.setHint("https://your-war-room.ts.net");
+        serverUrlInput.setHint(DEFAULT_SERVER_URL);
         serverUrlInput.setTextColor(Color.WHITE);
         serverUrlInput.setHintTextColor(Color.rgb(100, 116, 139));
         serverUrlInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
@@ -146,19 +150,16 @@ public class MainActivity extends Activity {
         setupPanel.addView(connect, connectParams);
         connect.setOnClickListener(v -> connectToServer(serverUrlInput.getText().toString()));
 
-        Button clear = new Button(this);
-        clear.setText("Clear saved server");
-        clear.setTextColor(Color.WHITE);
-        clear.setBackgroundColor(Color.TRANSPARENT);
-        LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48));
-        clearParams.topMargin = dp(8);
-        setupPanel.addView(clear, clearParams);
-        clear.setOnClickListener(v -> {
-            prefs.edit().remove(KEY_SERVER_URL).apply();
-            serverUrl = "";
-            serverUrlInput.setText("");
-            webView.loadUrl("about:blank");
-            connectionMessage.setText("Saved server cleared.");
+        Button resetDefault = new Button(this);
+        resetDefault.setText("USE BUILT-IN SERVER");
+        resetDefault.setTextColor(Color.WHITE);
+        resetDefault.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout.LayoutParams defaultParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48));
+        defaultParams.topMargin = dp(8);
+        setupPanel.addView(resetDefault, defaultParams);
+        resetDefault.setOnClickListener(v -> {
+            serverUrlInput.setText(DEFAULT_SERVER_URL);
+            connectToServer(DEFAULT_SERVER_URL);
         });
 
         connectionMessage = new TextView(this);
@@ -221,10 +222,10 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (url != null && !"about:blank".equals(url)) {
-                    view.evaluateJavascript("(function(){var m=document.querySelector('meta[name=viewport]');if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}m.content='width=device-width,initial-scale=1,viewport-fit=cover';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';})();", null);
+                    view.evaluateJavascript("(function(){var m=document.querySelector('meta[name=viewport]');if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}m.content='width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.body.classList.add('android-app');})();", null);
                     setupPanel.setVisibility(View.GONE);
+                    toolbar.setVisibility(View.GONE);
                     webView.setVisibility(View.VISIBLE);
-                    toolbarTitle.setText("Pick'em War Room");
                 }
             }
 
@@ -233,7 +234,7 @@ public class MainActivity extends Activity {
                 super.onReceivedError(view, request, error);
                 if (request.isForMainFrame()) {
                     String description = error == null ? "Connection failed" : String.valueOf(error.getDescription());
-                    showSetup("Couldn't reach War Room: " + description + "\n\nCheck that the server is running and that Tailscale/LAN access is available.");
+                    showSetup("Couldn't reach the built-in War Room address: " + description + "\n\nMake sure Tailscale is connected on this Pixel and the War Room server is running.");
                 }
             }
 
@@ -255,12 +256,14 @@ public class MainActivity extends Activity {
         serverUrlInput.setText(normalized);
         prefs.edit().putString(KEY_SERVER_URL, normalized).apply();
         connectionMessage.setText("Connecting to " + normalized + " …");
+        toolbar.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
         setupPanel.setVisibility(View.GONE);
         webView.loadUrl(normalized);
     }
 
     private void showSetup(String message) {
+        toolbar.setVisibility(View.VISIBLE);
         setupPanel.setVisibility(View.VISIBLE);
         webView.setVisibility(View.GONE);
         if (connectionMessage != null) connectionMessage.setText(message == null ? "" : message);
@@ -272,7 +275,7 @@ public class MainActivity extends Activity {
         if (raw == null) return null;
         String v = raw.trim();
         if (v.isEmpty()) return null;
-        if (!v.startsWith("http://") && !v.startsWith("https://")) v = "https://" + v;
+        if (!v.startsWith("http://") && !v.startsWith("https://")) v = "http://" + v;
         Uri u = safeUri(v);
         if (u == null || u.getHost() == null || u.getHost().trim().isEmpty()) return null;
         while (v.endsWith("/")) v = v.substring(0, v.length() - 1);
@@ -329,12 +332,13 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (setupPanel.getVisibility() == View.VISIBLE && serverUrl != null && !serverUrl.isEmpty()) {
             setupPanel.setVisibility(View.GONE);
+            toolbar.setVisibility(View.GONE);
             webView.setVisibility(View.VISIBLE);
-            toolbarTitle.setText("Pick'em War Room");
         } else if (webView.canGoBack()) {
             webView.goBack();
         } else {
-            Toast.makeText(this, "Pick'em War Room stays open. Use Home to leave the app.", Toast.LENGTH_SHORT).show();
+            // Deliberately keep the app open at the War Room root instead of
+            // letting Android's Back button accidentally exit it.
         }
     }
 
