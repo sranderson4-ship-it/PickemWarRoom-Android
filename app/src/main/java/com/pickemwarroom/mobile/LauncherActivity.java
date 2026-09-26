@@ -33,8 +33,8 @@ import java.util.List;
 
 public class LauncherActivity extends Activity {
     private static final String SERVER_URL = "https://larkwebapp.taild46ae8.ts.net:8443";
-    private static final String MOBILE_VERSION = "0.3.5";
-    private static final int FILE_CHOOSER_REQUEST = 5102;
+    private static final String MOBILE_VERSION = "0.3.6";
+    private static final int FILE_CHOOSER_REQUEST = 5102;\n    private static final String TAILSCALE_PACKAGE = "com.tailscale.ipn";\n    private boolean hadNetworkError = false;
 
     private FrameLayout root;
     private WebView webView;
@@ -115,14 +115,27 @@ public class LauncherActivity extends Activity {
         mp.topMargin = dp(18);
         messagePanel.addView(messageText, mp);
 
+        Button openTailscale = new Button(this);
+        openTailscale.setText("Open Tailscale");
+        openTailscale.setAllCaps(false);
+        openTailscale.setOnClickListener(v -> openTailscale());
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)
+        );
+        tp.topMargin = dp(18);
+        messagePanel.addView(openTailscale, tp);
+
         Button retry = new Button(this);
         retry.setText("Retry connection");
         retry.setAllCaps(false);
-        retry.setOnClickListener(v -> loadServer());
+        retry.setOnClickListener(v -> {
+            hadNetworkError = false;
+            loadServer();
+        });
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(54)
         );
-        rp.topMargin = dp(18);
+        rp.topMargin = dp(10);
         messagePanel.addView(retry, rp);
 
         root.addView(messagePanel, new FrameLayout.LayoutParams(
@@ -213,8 +226,17 @@ public class LauncherActivity extends Activity {
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
                 if (request != null && request.isForMainFrame()) {
-                    showMessage("Couldn't reach BBB Golf.\n\nMake sure Tailscale is connected on this phone and BBBGolfServer v36 is running on the Windows computer.");
+                    hadNetworkError = true;
+                    showMessage("BBB Golf cannot resolve the private Tailscale address.\n\nOpen Tailscale and make sure it shows Connected, then return here and tap Retry connection.\n\nAlso make sure BBBGolfServer v36 is running on the Windows computer.");
                 }
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                hadNetworkError = true;
+                showMessage("BBB Golf cannot reach the private Tailscale address.\n\nOpen Tailscale and make sure it shows Connected, then return here and tap Retry connection.\n\nNetwork error: " + description);
             }
 
             @Override
@@ -230,6 +252,33 @@ public class LauncherActivity extends Activity {
         if (webView != null) {
             webView.setVisibility(View.VISIBLE);
             webView.loadUrl(SERVER_URL + "/?android=035&t=" + System.currentTimeMillis());
+        }
+    }
+
+    private void openTailscale() {
+        try {
+            Intent launch = getPackageManager().getLaunchIntentForPackage(TAILSCALE_PACKAGE);
+            if (launch != null) {
+                startActivity(launch);
+                return;
+            }
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + TAILSCALE_PACKAGE)));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + TAILSCALE_PACKAGE)));
+            } catch (Exception ignored) {
+                Toast.makeText(this, "Open Tailscale manually, connect, then return to BBB Golf.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (hadNetworkError && webView != null) {
+            webView.postDelayed(() -> {
+                if (hadNetworkError) loadServer();
+            }, 700);
         }
     }
 
