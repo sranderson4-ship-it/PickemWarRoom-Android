@@ -44,3 +44,15 @@ jobs:
         with:
           name: BBBGolf-Android-v0.3.5-unsigned
           path: BBBGolf-Android-v0.3.5-unsigned.apk
+
+      - name: Package Android signing tools
+        shell: bash
+        run: |
+          cd /usr/local/lib/android/sdk/build-tools/36.0.0
+          tar -czf "$GITHUB_WORKSPACE/android-signing-tools-36.tgz" apksigner lib zipalign
+
+      - name: Upload signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signing-tools-36
+          path: android-signing-tools-36.tgz
