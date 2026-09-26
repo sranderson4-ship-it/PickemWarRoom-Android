@@ -34,7 +34,9 @@ import java.util.List;
 public class LauncherActivity extends Activity {
     private static final String SERVER_URL = "https://larkwebapp.taild46ae8.ts.net:8443";
     private static final String MOBILE_VERSION = "0.3.6";
-    private static final int FILE_CHOOSER_REQUEST = 5102;\n    private static final String TAILSCALE_PACKAGE = "com.tailscale.ipn";\n    private boolean hadNetworkError = false;
+    private static final int FILE_CHOOSER_REQUEST = 5102;
+    private static final String TAILSCALE_PACKAGE = "com.tailscale.ipn";
+    private boolean hadNetworkError = false;
 
     private FrameLayout root;
     private WebView webView;
