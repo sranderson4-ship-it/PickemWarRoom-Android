@@ -37,13 +37,13 @@ jobs:
         run: gradle :app:assembleRelease --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release-unsigned.apk BBBGolf-Android-v0.3.5-unsigned.apk
+        run: cp app/build/outputs/apk/release/app-release-unsigned.apk BBBGolf-Android-v0.3.6-unsigned.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BBBGolf-Android-v0.3.5-unsigned
-          path: BBBGolf-Android-v0.3.5-unsigned.apk
+          name: BBBGolf-Android-v0.3.6-unsigned
+          path: BBBGolf-Android-v0.3.6-unsigned.apk
 
       - name: Package Android signing tools
         shell: bash
